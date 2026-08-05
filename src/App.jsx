@@ -7,6 +7,7 @@ import Seats from "./pages/Seats";
 import { Provider } from "react-redux";
 import store from "./app/store/appStore";
 import Body from "./components/Body";
+import Payment from "./components/Payments"
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/movies/:movieId" element={<MovieDetails />} />
             <Route path="/movies/:movieId/shows" element={<Shows />} />
             <Route path="/shows/:showId/seats" element={<Seats />} />
+            <Route path="/payment"element={<Payment />}/>
           </Route>
         </Routes>
       </BrowserRouter>

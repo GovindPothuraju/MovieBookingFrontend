@@ -8,9 +8,22 @@ const Shows = () => {
 
   const navigate = useNavigate();
 
-  const [selectedDate, setSelectedDate] =
-    useState("2026-06-11");
+  const getNextSevenDays = () => {
+    const days = [];
 
+    for (let i = 0; i < 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+
+      days.push(date.toISOString().split("T")[0]); // YYYY-MM-DD
+    }
+
+    return days;
+  };
+
+  const dates = getNextSevenDays();
+
+  const [selectedDate, setSelectedDate] = useState(dates[0]);
   const [shows, setShows] = useState([]);
 
   const getShows = async (date) => {
@@ -31,14 +44,6 @@ const Shows = () => {
   useEffect(() => {
     getShows(selectedDate);
   }, [selectedDate]);
-
-  const dates = [
-    "2026-06-11",
-    "2026-06-12",
-    "2026-06-13",
-    "2026-06-14",
-    "2026-06-15",
-  ];
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">

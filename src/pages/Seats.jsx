@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams ,useNavigate} from "react-router-dom";
 import axios from "axios";
 import { BASE_URL } from "../shared/constants";
 
 const Seats = () => {
   const { showId } = useParams();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [showData, setShowData] = useState(null);
@@ -91,6 +92,51 @@ const Seats = () => {
       (priceMap?.[seat.category]?.price || 0),
     0
   );
+
+  const handleProceedToPayment = async () => {
+  try {
+    const payload = {
+      showId,
+      seats: selectedSeats,
+    };
+
+    const response = await axios.post(
+      `${BASE_URL}/user/bookings/lock`,
+      payload,
+      {
+        withCredentials: true,
+      }
+    );
+
+    console.log(response.data);
+    // Navigate to payment page
+    navigate("/payment", {
+      state: {
+        showId,
+        selectedSeats,
+        totalAmount,
+        expiresIn: response.data.expiresIn,
+      },
+    });
+  } catch (err) {
+    if (err.response?.status === 409) {
+      alert(err.response.data.message);
+
+      // Refresh seats
+      getSeats();
+
+      // Clear previous selection
+      setSelectedSeats([]);
+
+      return;
+    }
+
+    alert(
+      err.response?.data?.message ||
+        "Something went wrong."
+    );
+  }
+};
 
   if (loading) {
     return (
@@ -314,6 +360,8 @@ const Seats = () => {
               disabled:cursor-not-allowed
               disabled:opacity-50
             "
+             onClick={handleProceedToPayment}
+
           >
             Proceed To Payment
           </button>
