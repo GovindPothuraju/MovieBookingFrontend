@@ -8,6 +8,8 @@ import { Provider } from "react-redux";
 import store from "./app/store/appStore";
 import Body from "./components/Body";
 import Payment from "./components/Payments"
+import Bookings from "./components/Bookings"
+import BookingDetails from "./pages/BookingDetails";
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
             <Route path="/movies/:movieId/shows" element={<Shows />} />
             <Route path="/shows/:showId/seats" element={<Seats />} />
             <Route path="/payment"element={<Payment />}/>
+            <Route path="/bookings" element={<Bookings />} />
+            <Route path="/bookings/:bookingId"element={<BookingDetails />}/>
           </Route>
         </Routes>
       </BrowserRouter>

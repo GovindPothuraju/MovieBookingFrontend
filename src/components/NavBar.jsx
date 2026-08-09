@@ -39,6 +39,13 @@ const Navbar = () => {
           </Link>
 
           <Link
+            to="/bookings"
+            className="font-medium text-white transition hover:text-red-400"
+          >
+            My Bookings
+          </Link>
+
+          <Link
             to="/releases"
             className="font-medium text-white transition hover:text-red-400"
           >
@@ -128,6 +135,14 @@ const Navbar = () => {
               className="text-white hover:text-red-400"
             >
               Theaters
+            </Link>
+
+            <Link
+              to="/bookings"
+              onClick={() => setIsOpen(false)}
+              className="text-white hover:text-red-400"
+            >
+              My Bookings
             </Link>
 
             <Link

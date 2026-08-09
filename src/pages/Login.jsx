@@ -1,5 +1,5 @@
 import { useState } from "react";
-import HomePage from "../shared/assets/HomePage.png";
+import HomePage from "../shared/assets/HomePage.webp";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { BASE_URL } from "../shared/constants";

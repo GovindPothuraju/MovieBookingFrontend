@@ -107,8 +107,6 @@ const Seats = () => {
         withCredentials: true,
       }
     );
-
-    console.log(response.data);
     // Navigate to payment page
     navigate("/payment", {
       state: {
