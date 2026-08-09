@@ -7,12 +7,6 @@ import axios from "axios";
 import { addUser } from "../app/store/userSlice";
 
 const Login = () => {
-  /**
-   * "birivamshi@gmail.com"
-      "Vamshi@2006"
-      govindpothuraju2006@gmail.com
-      Govind@2006
-   */
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
