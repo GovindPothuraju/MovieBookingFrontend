@@ -12,7 +12,7 @@ const Navbar = () => {
           to="/movies"
           className="text-3xl font-bold text-white"
         >
-          <span className="text-red-500">Q</span>uickShow
+          <span className="text-red-500">Q</span>uickBook
         </Link>
 
         {/* Desktop Menu */}
