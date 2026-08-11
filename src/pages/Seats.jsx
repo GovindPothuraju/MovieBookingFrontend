@@ -116,8 +116,8 @@ const Seats = () => {
                           <div key={seat._id} className="flex items-center">
                             {index === Math.floor(rowSeats.length / 2) && <div className="w-5" />}
 
-                            <button type="button" onClick={() => handleSeatClick(seat)} disabled={seat.isBooked} className={`h-[17px] w-[17px] rounded-[3px] border text-[6px] font-bold transition-all sm:h-[19px] sm:w-[19px] ${seat.isBooked ? "cursor-not-allowed border-zinc-800 bg-zinc-800 text-zinc-600" : isSelected(seat._id) ? "border-[#ff555c] bg-[#ed1c24] text-white shadow-[0_0_8px_rgba(237,28,36,0.45)]" : "border-white/20 bg-[#f1f0e8] text-black hover:scale-110 hover:border-[#ed1c24]"}`}>
-                              {seat.column}
+                          <button type="button" onClick={() => handleSeatClick(seat)} disabled={seat.isBooked} className={`h-[18px] w-[18px] rounded-[4px] border text-[6px] font-bold transition-all sm:h-[20px] sm:w-[20px] ${seat.isBooked ? "cursor-not-allowed border-red-950 bg-[#171719] text-zinc-700" : isSelected(seat._id) ? "border-red-400 bg-[#ed1c24] text-white shadow-[0_0_12px_rgba(237,28,36,0.6)]" : "border-[#ed1c24]/70 bg-[#141416] text-red-300 hover:scale-110 hover:border-red-400 hover:bg-[#1d1d20] hover:shadow-[0_0_8px_rgba(237,28,36,0.3)]"}`}>
+                            {seat.column}
                             </button>
                           </div>
                         ))}
@@ -135,8 +135,7 @@ const Seats = () => {
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[2px] bg-[#f1f0e8]" />Available</div>
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[2px] bg-[#3f4000]" />Booked</div>
             <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[2px] bg-[#ed1c24]" />Selected</div>
-          </div>
-
+          </div>                
           <div className="mt-3 text-center text-[8px] text-zinc-600">
             {selectedSeats.length ? `${selectedSeats.length} Selected Seats` : "Select your seats"}
           </div>
