@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState , useEffect } from "react";
 import HomePage from "../shared/assets/HomePage.webp";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -16,6 +16,21 @@ const Login = () => {
 
   const navigate = useNavigate();
   const userDispatch = useDispatch();
+
+  const getUserData = async ()=>{
+    try{
+      const response = await axios.get(`${BASE_URL}/user/profile`,{withCredentials:true});
+    
+      if(response.data.success){
+        navigate("/home")
+      }
+    }catch(err){
+      console.log(err)
+    }
+  }
+  useEffect(()=>{
+    getUserData();
+  },[])
 
   const handleLogin = async () => {
     try {

@@ -1,172 +1,340 @@
-import { Link } from "react-router-dom";
+import { Film, User, LogOut, Menu, X, Clapperboard, Ticket } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import axios from "axios";
+import { BASE_URL } from "../shared/constants";
 
 const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await axios.post(
+        `${BASE_URL}/user/logout`,
+        {},
+        { withCredentials: true }
+      );
+
+      setMenuOpen(false);
+      navigate("/", { replace: true });
+    } catch (error) {
+      console.error(
+        "Logout failed:",
+        error?.response?.data?.message || error.message
+      );
+    }
+  };
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/10 bg-black/30 px-4 py-4 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between">
-        {/* Logo */}
-        <Link
-          to="/movies"
-          className="text-3xl font-bold text-white"
-        >
-          <span className="text-red-500">Q</span>uickBook
-        </Link>
+    <nav className="fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-[1400px] -translate-x-1/2">
+      <div className="relative">
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-10 rounded-full border border-white/10 bg-white/10 px-8 py-4 backdrop-blur-xl">
+        {/* Navbar */}
+        <div className="flex h-[70px] items-center rounded-[22px] border border-white/10 bg-[#111113]/95 px-3 shadow-2xl backdrop-blur-xl sm:px-5">
+
+          {/* Logo */}
           <Link
-            to="/movies"
-            className="font-medium text-white transition hover:text-red-400"
+            to="/home"
+            onClick={closeMenu}
+            className="flex shrink-0 items-center gap-3"
           >
-            Home
-          </Link>
-
-          <Link
-            to="/movies"
-            className="font-medium text-white transition hover:text-red-400"
-          >
-            Movies
-          </Link>
-
-          <Link
-            to="/theaters"
-            className="font-medium text-white transition hover:text-red-400"
-          >
-            Theaters
-          </Link>
-
-          <Link
-            to="/bookings"
-            className="font-medium text-white transition hover:text-red-400"
-          >
-            My Bookings
-          </Link>
-
-          <Link
-            to="/releases"
-            className="font-medium text-white transition hover:text-red-400"
-          >
-            Releases
-          </Link>
-        </div>
-
-        {/* Desktop Right */}
-        <div className="hidden md:flex items-center gap-5">
-          <button className="text-white transition hover:text-red-400">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.8}
-              stroke="currentColor"
-              className="h-7 w-7"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.04 6.04a7.5 7.5 0 0 0 10.61 10.61Z"
+            <div className="flex h-10 w-10 items-center justify-center rounded-[13px] bg-[#ed1c24]">
+              <Film
+                size={21}
+                strokeWidth={2.5}
+                className="text-white"
               />
-            </svg>
-          </button>
+            </div>
 
-          <img
-            src="https://i.pravatar.cc/150?img=12"
-            alt="user"
-            className="h-10 w-10 rounded-full border border-white/20 object-cover"
-          />
-        </div>
+            <span className="hidden text-[18px] font-extrabold tracking-[2px] text-white sm:block">
+              QUICKBOOK
+            </span>
+          </Link>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-white"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-            className="h-8 w-8"
-          >
-            {isOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"
-              />
-            )}
-          </svg>
-        </button>
-      </div>
+          {/* Desktop Navigation */}
+          <div className="ml-6 hidden items-center gap-7 md:flex lg:ml-10 lg:gap-9">
 
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="mt-4 rounded-2xl border border-white/10 bg-black/80 p-5 backdrop-blur-xl md:hidden">
-          <div className="flex flex-col gap-5">
             <Link
-              to="/movies"
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-red-400"
+              to="/home"
+              className="text-[15px] font-medium text-gray-300 transition hover:text-white"
             >
               Home
             </Link>
 
             <Link
               to="/movies"
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-red-400"
+              className="text-[15px] font-medium text-gray-300 transition hover:text-white"
             >
               Movies
             </Link>
 
             <Link
               to="/theaters"
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-red-400"
+              className="text-[15px] font-medium text-gray-300 transition hover:text-white"
             >
               Theaters
             </Link>
 
             <Link
               to="/bookings"
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-red-400"
+              className="text-[15px] font-medium text-gray-300 transition hover:text-white"
             >
-              My Bookings
+              My Booking
             </Link>
+
+          </div>
+
+          {/* Desktop Right Side */}
+          <div className="ml-auto hidden items-center gap-2 md:flex sm:gap-3">
 
             <Link
-              to="/releases"
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-red-400"
+              to="/profile"
+              className="
+                flex
+                h-10
+                items-center
+                gap-2
+                rounded-[12px]
+                border
+                border-white/10
+                bg-white/[0.03]
+                px-3
+                text-gray-300
+                transition
+                hover:bg-white/[0.08]
+                hover:text-white
+              "
             >
-              Releases
+              <User size={18} />
+
+              <span className="text-[14px] font-medium">
+                Profile
+              </span>
             </Link>
 
-            <div className="flex items-center gap-4 pt-3 border-t border-white/10">
-              <img
-                src="https://i.pravatar.cc/150?img=12"
-                alt="user"
-                className="h-10 w-10 rounded-full object-cover"
-              />
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="
+                flex
+                h-10
+                items-center
+                gap-2
+                rounded-[12px]
+                bg-[#ed1c24]
+                px-3
+                text-white
+                transition
+                hover:bg-[#d91820]
+                active:scale-95
+              "
+            >
+              <LogOut size={17} />
 
-              <span className="text-white">
-                Govind Pothuraju
+              <span className="text-[14px] font-semibold">
+                Logout
               </span>
-            </div>
+            </button>
+
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="
+              ml-auto
+              flex
+              h-11
+              w-11
+              items-center
+              justify-center
+              rounded-[13px]
+              border
+              border-white/10
+              bg-white/[0.04]
+              text-white
+              transition
+              hover:bg-white/[0.08]
+              md:hidden
+            "
+            aria-label="Toggle navigation menu"
+          >
+            {menuOpen ? (
+              <X size={22} />
+            ) : (
+              <Menu size={22} />
+            )}
+          </button>
+
         </div>
-      )}
+
+        {/* Mobile Menu */}
+        {menuOpen && (
+          <div
+            className="
+              mt-2
+              overflow-hidden
+              rounded-[20px]
+              border
+              border-white/10
+              bg-[#111113]/98
+              p-2
+              shadow-2xl
+              backdrop-blur-xl
+              md:hidden
+            "
+          >
+
+            {/* Home */}
+            <Link
+              to="/home"
+              onClick={closeMenu}
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-[13px]
+                px-4
+                py-3
+                text-sm
+                font-medium
+                text-gray-300
+                transition
+                hover:bg-white/[0.06]
+                hover:text-white
+              "
+            >
+              <Film size={18} />
+              Home
+            </Link>
+
+            {/* Movies */}
+            <Link
+              to="/movies"
+              onClick={closeMenu}
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-[13px]
+                px-4
+                py-3
+                text-sm
+                font-medium
+                text-gray-300
+                transition
+                hover:bg-white/[0.06]
+                hover:text-white
+              "
+            >
+              <Clapperboard size={18} />
+              Movies
+            </Link>
+
+            {/* Theaters */}
+            <Link
+              to="/theaters"
+              onClick={closeMenu}
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-[13px]
+                px-4
+                py-3
+                text-sm
+                font-medium
+                text-gray-300
+                transition
+                hover:bg-white/[0.06]
+                hover:text-white
+              "
+            >
+              <Ticket size={18} />
+              Theaters
+            </Link>
+
+            {/* My Booking */}
+            <Link
+              to="/bookings"
+              onClick={closeMenu}
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-[13px]
+                px-4
+                py-3
+                text-sm
+                font-medium
+                text-gray-300
+                transition
+                hover:bg-white/[0.06]
+                hover:text-white
+              "
+            >
+              <Ticket size={18} />
+              My Booking
+            </Link>
+
+            {/* Profile */}
+            <Link
+              to="/profile"
+              onClick={closeMenu}
+              className="
+                flex
+                items-center
+                gap-3
+                rounded-[13px]
+                px-4
+                py-3
+                text-sm
+                font-medium
+                text-gray-300
+                transition
+                hover:bg-white/[0.06]
+                hover:text-white
+              "
+            >
+              <User size={18} />
+              Profile
+            </Link>
+
+            {/* Divider */}
+            <div className="my-2 border-t border-white/10" />
+
+            {/* Logout */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="
+                flex
+                w-full
+                items-center
+                gap-3
+                rounded-[13px]
+                px-4
+                py-3
+                text-left
+                text-sm
+                font-semibold
+                text-red-500
+                transition
+                hover:bg-red-500/10
+              "
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+
+          </div>
+        )}
+
+      </div>
     </nav>
   );
 };

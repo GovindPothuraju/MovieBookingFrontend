@@ -1,126 +1,59 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Mobile / Responsive -->
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
+  <title>QuickBook - Book Movie Tickets Online</title>
 
-    <!-- Primary SEO -->
-    <title>QuickBook - Book Movie Tickets Online</title>
+  <meta name="description" content="QuickBook lets you discover movies, find theaters, choose seats, and book movie tickets online quickly and easily." />
+  <meta name="robots" content="index, follow" />
 
-    <meta
-      name="description"
-      content="QuickBook lets you discover movies, find theaters, choose seats, and book movie tickets online quickly and easily."
-    />
+  <link rel="canonical" href="https://quickbook.dpdns.org/" />
 
-    <meta name="robots" content="index, follow" />
+  <meta name="application-name" content="QuickBook" />
+  <meta name="author" content="QuickBook" />
+  <meta name="theme-color" content="#000000" />
 
-    <!-- Canonical URL -->
-    <link
-      rel="canonical"
-      href="https://quickbook.dpdns.org/"
-    />
+  <meta property="og:title" content="QuickBook - Book Movie Tickets Online" />
+  <meta property="og:description" content="Discover movies, find theaters, choose seats, and book movie tickets online with QuickBook." />
+  <meta property="og:url" content="https://quickbook.dpdns.org/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="QuickBook" />
+  <meta property="og:locale" content="en_IN" />
 
-    <!-- Website / Brand -->
-    <meta
-      name="application-name"
-      content="QuickBook"
-    />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="QuickBook - Book Movie Tickets Online" />
+  <meta name="twitter:description" content="Discover movies, find theaters, choose seats, and book movie tickets online with QuickBook." />
 
-    <meta
-      name="author"
-      content="QuickBook"
-    />
+  <link rel="icon" href="/favicon.ico" />
 
-    <meta
-      name="theme-color"
-      content="#000000"
-    />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "QuickBook",
+      "alternateName": [
+        "QuickBook Movies",
+        "QuickBook Ticket Booking"
+      ],
+      "url": "https://quickbook.dpdns.org/"
+    }
+  </script>
 
-    <!-- Open Graph / Social Sharing -->
-    <meta
-      property="og:title"
-      content="QuickBook - Book Movie Tickets Online"
-    />
+  <!-- Razorpay Checkout -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
 
-    <meta
-      property="og:description"
-      content="Discover movies, find theaters, choose seats, and book movie tickets online with QuickBook."
-    />
+<body>
+  <noscript>
+    QuickBook is a movie ticket booking platform that helps you discover movies,
+    find theaters, choose seats, and book movie tickets online.
+    Please enable JavaScript to use QuickBook.
+  </noscript>
 
-    <meta
-      property="og:url"
-      content="https://quickbook.dpdns.org/"
-    />
+  <div id="root"></div>
 
-    <meta
-      property="og:type"
-      content="website"
-    />
-
-    <meta
-      property="og:site_name"
-      content="QuickBook"
-    />
-
-    <meta
-      property="og:locale"
-      content="en_IN"
-    />
-
-    <!-- Twitter / X -->
-    <meta
-      name="twitter:card"
-      content="summary"
-    />
-
-    <meta
-      name="twitter:title"
-      content="QuickBook - Book Movie Tickets Online"
-    />
-
-    <meta
-      name="twitter:description"
-      content="Discover movies, find theaters, choose seats, and book movie tickets online with QuickBook."
-    />
-
-    <!-- Favicon -->
-    <link
-      rel="icon"
-      href="/favicon.ico"
-    />
-
-    <!-- WebSite Structured Data -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "QuickBook",
-        "alternateName": [
-          "QuickBook Movies",
-          "QuickBook Ticket Booking"
-        ],
-        "url": "https://quickbook.dpdns.org/"
-      }
-    </script>
-  </head>
-
-  <body>
-    <noscript>
-      QuickBook is a movie ticket booking platform that helps you
-      discover movies, find theaters, choose seats, and book movie tickets online.
-      Please enable JavaScript to use QuickBook.
-    </noscript>
-
-    <div id="root"></div>
-
-    <script
-      type="module"
-      src="/src/main.jsx"
-    ></script>
-  </body>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
 </html>
