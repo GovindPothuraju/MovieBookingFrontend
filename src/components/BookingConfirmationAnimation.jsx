@@ -1,486 +1,814 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-/**
- * Cinematic booking confirmation overlay - Tailwind CSS Version
- * PURELY VISUAL: never creates a booking, never calls any API.
- */
-
-export const PHASES = {
+const PHASES = {
   VERIFYING: "VERIFYING",
-  TICKET_ASSEMBLING: "TICKET_ASSEMBLING",
-  TICKET_ROTATING: "TICKET_ROTATING",
-  TICKET_FLIPPING: "TICKET_FLIPPING",
+  TICKET: "TICKET",
   CONFIRMED: "CONFIRMED",
   REDIRECTING: "REDIRECTING",
 };
 
-const ORDER = [
-  PHASES.VERIFYING,
-  PHASES.TICKET_ASSEMBLING,
-  PHASES.TICKET_ROTATING,
-  PHASES.TICKET_FLIPPING,
-  PHASES.CONFIRMED,
-  PHASES.REDIRECTING,
-];
-
-const FULL_TIMINGS = {
-  [PHASES.VERIFYING]: 1100,
-  [PHASES.TICKET_ASSEMBLING]: 1000,
-  [PHASES.TICKET_ROTATING]: 900,
-  [PHASES.TICKET_FLIPPING]: 1150,
-  [PHASES.CONFIRMED]: 2400,
+const PHASE_TIMINGS = {
+  VERIFYING: 1000,
+  TICKET: 900,
+  CONFIRMED: 2800,
 };
 
-const REDUCED_TIMINGS = {
-  [PHASES.VERIFYING]: 700,
-  [PHASES.TICKET_ASSEMBLING]: 320,
-  [PHASES.TICKET_ROTATING]: 0,
-  [PHASES.TICKET_FLIPPING]: 260,
-  [PHASES.CONFIRMED]: 1500,
-};
-
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduced(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-  return reduced;
-}
-
-function pick(...values) {
+const getValue = (...values) => {
   for (const value of values) {
-    if (value !== undefined && value !== null && value !== "") return value;
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      return value;
+    }
   }
-  return undefined;
-}
 
-function formatDate(value) {
+  return null;
+};
+
+const formatDate = (value) => {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }).toUpperCase();
-}
 
-function formatTime(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatTime = (value) => {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-}
 
-function readTicket(booking) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const getSeats = (booking) => {
+  if (!booking) return [];
+
+  const seats =
+    booking.seats ||
+    booking.bookedSeats ||
+    [];
+
+  if (!Array.isArray(seats)) {
+    return [];
+  }
+
+  return seats.map((seat) => {
+    if (typeof seat === "string") {
+      return seat;
+    }
+
+    if (seat && typeof seat === "object") {
+      return (
+        seat.seatLabel ||
+        seat.seatNumber ||
+        seat.label ||
+        seat.name ||
+        ""
+      );
+    }
+
+    return "";
+  }).filter(Boolean);
+};
+
+const getBookingDetails = (booking) => {
   const b = booking || {};
-  const show = b.show || b.showId || b.showtime || {};
-  const movie = b.movie || show.movie || b.movieId || {};
-  const seats = pick(b.seats, b.bookedSeats, b.seatNumbers, show.seats) || [];
-  
-  const seatList = Array.isArray(seats)
-    ? seats.map((seat) => {
-        if (typeof seat === "string") return seat;
-        if (typeof seat === "object" && seat !== null) {
-          return pick(seat.seatNumber, seat.seatLabel, seat.label, seat.name, seat.id, "");
-        }
-        return "";
-      })
-    : [];
-    
-  const showDate = pick(b.showDateTime, show.showDateTime, show.startTime, show.date, b.date);
-  const id = String(pick(b._id, b.id, b.bookingId, "") || "");
+
+  // Your /bookings/me API returns populated references.
+  const movie =
+    b.movieId && typeof b.movieId === "object"
+      ? b.movieId
+      : {};
+
+  const theater =
+    b.theaterId && typeof b.theaterId === "object"
+      ? b.theaterId
+      : {};
+
+  const screen =
+    b.screenId && typeof b.screenId === "object"
+      ? b.screenId
+      : {};
+
+  const show =
+    b.showId && typeof b.showId === "object"
+      ? b.showId
+      : {};
+
+  const showTime = getValue(
+    show.showTime,
+    b.showTime,
+    b.showDateTime
+  );
+
+  const seats = getSeats(b);
 
   return {
-    movieTitle: pick(typeof movie === "string" ? movie : movie?.title, movie?.name, b.movieTitle, "YOUR MOVIE"),
-    screenLabel: pick(show?.screenType, show?.format, b.screenType, "Premium Screen"),
-    date: formatDate(showDate),
-    time: pick(formatTime(showDate), show?.time, b.time, "—"),
-    screen: pick(show?.screen, show?.screenName, show?.hall, b.screen, "—"),
-    seats: seatList.filter(Boolean).join(" ") || "—",
-    ticketNo: id ? `#${id.slice(-8).toUpperCase()}` : "#PREMIUM",
+    bookingId: getValue(
+      b.bookingId,
+      b._id,
+      b.id,
+      "—"
+    ),
+
+    movieName: getValue(
+      movie.title,
+      movie.name,
+      b.movieName,
+      "Movie"
+    ),
+
+    theaterName: getValue(
+      theater.name,
+      b.theaterName,
+      "Theatre"
+    ),
+
+    screenName: getValue(
+      screen.name,
+      b.screenName,
+      "Screen"
+    ),
+
+    showTime,
+
+    date: formatDate(showTime),
+
+    time: formatTime(showTime),
+
+    seats,
+
+    amount: getValue(
+      b.totalAmount,
+      b.amount,
+      0
+    ),
+
+    qrCode: b.qrCode || null,
   };
-}
+};
 
-export default function BookingConfirmationAnimation({ booking, onComplete }) {
-  const reducedMotion = usePrefersReducedMotion();
-  const [phase, setPhase] = useState(PHASES.VERIFYING);
-  const [showConfetti, setShowConfetti] = useState(false);
+export default function BookingConfirmationAnimation({
+  booking,
+  onComplete,
+}) {
+  const [phase, setPhase] = useState(
+    PHASES.VERIFYING
+  );
+
   const completedRef = useRef(false);
-  const timings = reducedMotion ? REDUCED_TIMINGS : FULL_TIMINGS;
-  const ticket = useMemo(() => readTicket(booking), [booking]);
 
-  // Animation state machine
+  const details = useMemo(
+    () => getBookingDetails(booking),
+    [booking]
+  );
+
   useEffect(() => {
-    if (phase === PHASES.REDIRECTING) return;
-    const next = ORDER[ORDER.indexOf(phase) + 1];
-    const timer = setTimeout(() => {
-      setPhase(next);
-      if (next === PHASES.CONFIRMED) setShowConfetti(true);
-    }, timings[phase] ?? 0);
-    return () => clearTimeout(timer);
-  }, [phase, timings]);
+    if (phase === PHASES.REDIRECTING) {
+      return;
+    }
 
-  // Redirect once after animation completes
+    const duration =
+      PHASE_TIMINGS[phase] || 1000;
+
+    const timer = setTimeout(() => {
+      if (phase === PHASES.VERIFYING) {
+        setPhase(PHASES.TICKET);
+      } else if (phase === PHASES.TICKET) {
+        setPhase(PHASES.CONFIRMED);
+      } else if (phase === PHASES.CONFIRMED) {
+        setPhase(PHASES.REDIRECTING);
+      }
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, [phase]);
+
   const finish = useCallback(() => {
-    if (completedRef.current) return;
+    if (completedRef.current) {
+      return;
+    }
+
     completedRef.current = true;
-    onComplete?.();
+
+    if (onComplete) {
+      onComplete();
+    }
   }, [onComplete]);
 
   useEffect(() => {
-    if (phase !== PHASES.REDIRECTING) return;
-    const timer = setTimeout(finish, 350);
+    if (phase !== PHASES.REDIRECTING) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      finish();
+    }, 400);
+
     return () => clearTimeout(timer);
   }, [phase, finish]);
 
-  const showVerify = phase === PHASES.VERIFYING;
-  const showHalves = phase === PHASES.TICKET_ASSEMBLING;
-  const showComplete = phase !== PHASES.VERIFYING && phase !== PHASES.TICKET_ASSEMBLING;
-  const isFlipped = phase === PHASES.TICKET_FLIPPING || phase === PHASES.CONFIRMED || phase === PHASES.REDIRECTING;
-  const confirmed = phase === PHASES.CONFIRMED || phase === PHASES.REDIRECTING;
+  const isVerifying =
+    phase === PHASES.VERIFYING;
 
-  // Generate confetti particles
-  const confettiParticles = useMemo(() => {
-    if (!showConfetti || reducedMotion) return [];
-    return Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      left: `${Math.random() * 100}%`,
-      animationDelay: `${Math.random() * 0.5}s`,
-      animationDuration: `${1.5 + Math.random() * 2}s`,
-      color: ['#F97316', '#EF4444', '#FFD700', '#FBBF24', '#F59E0B', '#FEE2E2'][Math.floor(Math.random() * 6)],
-      size: `${6 + Math.random() * 8}px`,
-      xDrift: `${(Math.random() - 0.5) * 200}px`,
-    }));
-  }, [showConfetti, reducedMotion]);
+  const showTicket =
+    phase === PHASES.TICKET ||
+    phase === PHASES.CONFIRMED ||
+    phase === PHASES.REDIRECTING;
+
+  const isConfirmed =
+    phase === PHASES.CONFIRMED ||
+    phase === PHASES.REDIRECTING;
 
   return (
     <>
-      {/* Inline keyframe animations */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.9); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        @keyframes checkDraw {
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes pulse {
-          0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3); }
-          100% { box-shadow: 0 0 0 22px rgba(249, 115, 22, 0); }
-        }
-        @keyframes flyLeft {
-          0% { transform: translateX(-100vw) translateY(-40px) rotate(-12deg) scale(0.9); opacity: 0; }
-          55% { opacity: 1; }
-          100% { transform: translateX(-85px) translateY(0) rotate(0deg) scale(1); opacity: 1; }
-        }
-        @keyframes flyRight {
-          0% { transform: translateX(100vw) translateY(40px) rotate(12deg) scale(0.9); opacity: 0; }
-          55% { opacity: 1; }
-          100% { transform: translateX(85px) translateY(0) rotate(0deg) scale(1); opacity: 1; }
-        }
-        @keyframes shockwave {
-          0% { transform: scale(0.2); opacity: 0.9; }
-          100% { transform: scale(3.2); opacity: 0; }
-        }
-        @keyframes tilt3D {
-          0% { transform: rotateY(180deg) rotateX(0deg); }
-          45% { transform: rotateY(196deg) rotateX(9deg) scale(1.03); }
-          100% { transform: rotateY(180deg) rotateX(0deg); }
-        }
-        @keyframes stampIn {
-          0% { transform: rotate(-16deg) scale(0.4); opacity: 0; }
-          60% { transform: rotate(-9deg) scale(1.12); opacity: 1; }
-          100% { transform: rotate(-9deg) scale(1); opacity: 1; }
-        }
-        @keyframes riseUp {
-          from { opacity: 0; transform: translateY(14px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes confettiFall {
-          0% { transform: translateY(-20px) rotate(0deg) scale(0); opacity: 1; }
-          100% { transform: translateY(100vh) rotate(720deg) scale(1); opacity: 0; }
-        }
-        @keyframes progressBar {
-          from { transform: scaleX(0); }
-          to { transform: scaleX(1); }
-        }
-      `}</style>
+      <style>
+        {`
+          @keyframes qbFadeIn {
+            from {
+              opacity: 0;
+            }
+            to {
+              opacity: 1;
+            }
+          }
 
-      {/* Overlay */}
-      <div 
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-6 overflow-hidden"
-        style={{ 
-          background: 'radial-gradient(120% 90% at 50% 0%, rgba(249, 115, 22, 0.12) 0%, rgba(10, 10, 14, 0) 60%), radial-gradient(100% 80% at 50% 100%, rgba(120, 80, 255, 0.08) 0%, rgba(10, 10, 14, 0) 55%), #08080c',
-          animation: 'fadeIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both'
+          @keyframes qbScaleIn {
+            0% {
+              opacity: 0;
+              transform: scale(.82);
+            }
+            70% {
+              opacity: 1;
+              transform: scale(1.04);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+
+          @keyframes qbCheck {
+            0% {
+              stroke-dashoffset: 100;
+            }
+            100% {
+              stroke-dashoffset: 0;
+            }
+          }
+
+          @keyframes qbRing {
+            0% {
+              transform: scale(.7);
+              opacity: .8;
+            }
+            100% {
+              transform: scale(1.45);
+              opacity: 0;
+            }
+          }
+
+          @keyframes qbTicketIn {
+            0% {
+              opacity: 0;
+              transform:
+                translateY(70px)
+                scale(.88)
+                rotateX(12deg);
+            }
+            70% {
+              opacity: 1;
+              transform:
+                translateY(-5px)
+                scale(1.02)
+                rotateX(0deg);
+            }
+            100% {
+              opacity: 1;
+              transform:
+                translateY(0)
+                scale(1)
+                rotateX(0deg);
+            }
+          }
+
+          @keyframes qbGlow {
+            0% {
+              box-shadow:
+                0 0 0 0 rgba(237,28,36,.25);
+            }
+            70% {
+              box-shadow:
+                0 0 0 25px rgba(237,28,36,0);
+            }
+            100% {
+              box-shadow:
+                0 0 0 0 rgba(237,28,36,0);
+            }
+          }
+
+          @keyframes qbStamp {
+            0% {
+              opacity: 0;
+              transform:
+                translate(-50%,-50%)
+                scale(.4)
+                rotate(-12deg);
+            }
+            65% {
+              opacity: 1;
+              transform:
+                translate(-50%,-50%)
+                scale(1.08)
+                rotate(-4deg);
+            }
+            100% {
+              opacity: 1;
+              transform:
+                translate(-50%,-50%)
+                scale(1)
+                rotate(-4deg);
+            }
+          }
+
+          @keyframes qbRise {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes qbShine {
+            0% {
+              transform: translateX(-120%);
+            }
+            100% {
+              transform: translateX(120%);
+            }
+          }
+
+          @keyframes qbProgress {
+            from {
+              width: 0%;
+            }
+            to {
+              width: 100%;
+            }
+          }
+
+          @keyframes qbPop {
+            0% {
+              opacity: 0;
+              transform: scale(.5);
+            }
+            70% {
+              opacity: 1;
+              transform: scale(1.12);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+
+          @media (max-width: 640px) {
+            .qb-ticket {
+              width: 94vw !important;
+            }
+
+            .qb-ticket-main {
+              padding: 20px !important;
+            }
+
+            .qb-ticket-stub {
+              width: 105px !important;
+            }
+
+            .qb-movie-title {
+              font-size: 22px !important;
+            }
+          }
+        `}
+      </style>
+
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto px-4 py-8"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 25%, rgba(237,28,36,.13), transparent 38%), #05060A",
+          animation:
+            "qbFadeIn .35s ease-out both",
         }}
         role="dialog"
         aria-modal="true"
         aria-label="Booking confirmation"
       >
-        {/* Vignette effect */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(70% 60% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.75) 100%)' }}
+        {/* Background atmosphere */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 50%, transparent 20%, rgba(0,0,0,.75) 100%)",
+          }}
         />
 
-        {/* Confetti particles */}
-        {showConfetti && confettiParticles.map(particle => (
-          <div
-            key={particle.id}
-            className="fixed rounded-sm pointer-events-none"
-            style={{
-              left: particle.left,
-              width: particle.size,
-              height: particle.size,
-              backgroundColor: particle.color,
-              animation: `confettiFall ${particle.animationDuration} ease-out ${particle.animationDelay} forwards`,
-              top: '-20px',
-            }}
-          />
-        ))}
+        {/* Red background glow */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            background:
+              "rgba(237,28,36,.06)",
+            filter: "blur(80px)",
+          }}
+        />
 
-        {/* Stage container */}
-        <div className="relative w-full max-w-[460px] flex flex-col items-center gap-6 text-center z-10">
-          
-          {/* Phase 1: Payment Verified */}
-          {showVerify && (
-            <div className="flex flex-col items-center gap-3.5" style={{ animation: 'scaleIn 0.3s ease-out' }}>
-              <div 
-                className="w-[72px] h-[72px] rounded-full grid place-items-center border"
-                style={{ 
-                  borderColor: 'rgba(249, 115, 22, 0.45)',
-                  animation: 'pulse 1.6s ease-out infinite'
-                }}
-              >
-                <svg className="w-[34px] h-[34px]" viewBox="0 0 24 24" aria-hidden="true">
-                  <path 
-                    d="M4.5 12.5 10 18 20 6.5"
-                    fill="none"
-                    stroke="#F97316"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeDasharray="34"
-                    strokeDashoffset="34"
-                    style={{ animation: 'checkDraw 0.52s cubic-bezier(0.65, 0, 0.35, 1) 0.12s forwards' }}
-                  />
-                </svg>
-              </div>
-              <h2 className="text-[19px] font-semibold text-[#f5f2ea] tracking-wide">Payment Verified</h2>
-              <p className="text-[13.5px] text-white/60 tracking-wider">Securing your seats…</p>
-            </div>
-          )}
+        <div className="relative z-10 w-full max-w-[760px] text-center">
 
-          {/* Ticket container */}
-          {!showVerify && (
-            <div className="relative w-full max-w-[400px] h-[300px] flex items-center justify-center" style={{ perspective: '1400px' }}>
-              
-              {/* Phase 2: Two halves fly in */}
-              {showHalves && (
-                <>
-                  {/* Left half */}
-                  <div 
-                    className="absolute w-[170px] h-[250px] rounded-l-[18px] overflow-hidden border border-r-0"
-                    style={{
-                      background: 'linear-gradient(155deg, #17171f 0%, #101018 55%, #0c0c12 100%)',
-                      borderColor: 'rgba(249, 115, 22, 0.22)',
-                      boxShadow: '0 30px 70px -28px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.03) inset',
-                      animation: 'flyLeft 0.9s cubic-bezier(0.16, 0.9, 0.25, 1) forwards',
-                    }}
+          {/* VERIFYING */}
+          {isVerifying && (
+            <div
+              className="flex flex-col items-center"
+              style={{
+                animation:
+                  "qbScaleIn .5s cubic-bezier(.22,1,.36,1) both",
+              }}
+            >
+              <div className="relative mb-7">
+
+                <div
+                  className="absolute inset-0 rounded-full border border-[#ed1c24]/40"
+                  style={{
+                    animation:
+                      "qbRing 1.5s ease-out infinite",
+                  }}
+                />
+
+                <div
+                  className="absolute inset-0 rounded-full border border-[#ed1c24]/30"
+                  style={{
+                    animation:
+                      "qbRing 1.5s ease-out .45s infinite",
+                  }}
+                />
+
+                <div
+                  className="relative flex h-24 w-24 items-center justify-center rounded-full border border-[#ed1c24]/40 bg-[#111113]"
+                  style={{
+                    animation:
+                      "qbGlow 1.6s ease-out infinite",
+                  }}
+                >
+                  <svg
+                    width="42"
+                    height="42"
+                    viewBox="0 0 42 42"
                   >
-                    <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(249,115,22,0.06)_0_2px,transparent_2px_12px)] grid place-items-center">
-                      <div className="text-center">
-                        <div className="text-[22px] font-extrabold tracking-[0.42em] text-[#F97316] indent-[0.42em]">MOVIEBOOK</div>
-                        <div className="text-[10.5px] tracking-[0.28em] uppercase text-white/45 mt-2.5">Generating…</div>
-                      </div>
-                    </div>
-                    {/* Perforation dots */}
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="w-5 h-2 bg-[#08080c] rounded-full" />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Right half */}
-                  <div 
-                    className="absolute w-[170px] h-[250px] rounded-r-[18px] overflow-hidden border border-l-0"
-                    style={{
-                      background: 'linear-gradient(155deg, #17171f 0%, #101018 55%, #0c0c12 100%)',
-                      borderColor: 'rgba(249, 115, 22, 0.22)',
-                      boxShadow: '0 30px 70px -28px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.03) inset',
-                      animation: 'flyRight 0.9s cubic-bezier(0.16, 0.9, 0.25, 1) forwards',
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(249,115,22,0.06)_0_2px,transparent_2px_12px)] grid place-items-center">
-                      <div className="text-center">
-                        <div className="text-[22px] font-extrabold tracking-[0.42em] text-[#F97316] indent-[0.42em]">MOVIEBOOK</div>
-                        <div className="text-[10.5px] tracking-[0.28em] uppercase text-white/45 mt-2.5">Generating…</div>
-                      </div>
-                    </div>
-                    {/* Perforation dots */}
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="w-5 h-2 bg-[#08080c] rounded-full" />
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Phases 3-6: Complete ticket with flip */}
-              {showComplete && (
-                <>
-                  {/* Shockwave */}
-                  {phase === PHASES.TICKET_ROTATING && (
-                    <div 
-                      className="absolute w-[120px] h-[120px] rounded-full border pointer-events-none"
+                    <circle
+                      cx="21"
+                      cy="21"
+                      r="18"
+                      fill="none"
+                      stroke="#ed1c24"
+                      strokeWidth="2.5"
+                      strokeDasharray="113"
+                      strokeDashoffset="113"
+                      strokeLinecap="round"
                       style={{
-                        borderColor: 'rgba(249, 115, 22, 0.6)',
-                        animation: 'shockwave 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+                        animation:
+                          "qbCheck .7s ease-out .2s forwards",
                       }}
                     />
-                  )}
 
-                  {/* Flipper container */}
-                  <div 
-                    className="relative w-[340px] h-[250px]"
-                    style={{
-                      transformStyle: 'preserve-3d',
-                      transform: isFlipped ? 'rotateY(0deg)' : 'rotateY(180deg)',
-                      transition: 'transform 1.1s cubic-bezier(0.6, 0.02, 0.2, 1)',
-                      animation: phase === PHASES.TICKET_ROTATING ? 'tilt3D 0.9s cubic-bezier(0.4, 0, 0.2, 1) both' : 'none',
-                    }}
-                  >
-                    {/* Back face */}
-                    <div 
-                      className="absolute inset-0 rounded-[18px] overflow-hidden border"
+                    <path
+                      d="M13 21.5l5.5 5.5L29.5 15"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray="25"
+                      strokeDashoffset="25"
                       style={{
-                        background: 'linear-gradient(155deg, #17171f 0%, #101018 55%, #0c0c12 100%)',
-                        borderColor: 'rgba(249, 115, 22, 0.22)',
-                        boxShadow: '0 30px 70px -28px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.03) inset',
-                        backfaceVisibility: 'hidden',
-                        WebkitBackfaceVisibility: 'hidden',
-                        transform: 'rotateY(180deg)',
+                        animation:
+                          "qbCheck .55s ease-out .65s forwards",
                       }}
-                    >
-                      <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgba(249,115,22,0.06)_0_2px,transparent_2px_12px)] grid place-items-center">
-                        <div className="text-center">
-                          <div className="text-[22px] font-extrabold tracking-[0.42em] text-[#F97316] indent-[0.42em]">MOVIEBOOK</div>
-                          <div className="text-[10.5px] tracking-[0.28em] uppercase text-white/45 mt-2.5">Generating your ticket…</div>
-                          <div className="mt-8 space-y-2">
-                            {[...Array(6)].map((_, i) => (
-                              <div key={i} className="h-px bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    />
+                  </svg>
+                </div>
+              </div>
 
-                    {/* Front face */}
-                    <div 
-                      className="absolute inset-0 rounded-[18px] overflow-hidden border"
-                      style={{
-                        background: 'linear-gradient(155deg, #17171f 0%, #101018 55%, #0c0c12 100%)',
-                        borderColor: 'rgba(249, 115, 22, 0.22)',
-                        boxShadow: '0 30px 70px -28px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.03) inset',
-                        backfaceVisibility: 'hidden',
-                        WebkitBackfaceVisibility: 'hidden',
-                      }}
-                    >
-                      <div className="absolute inset-0 flex">
-                        {/* Main content */}
-                        <div className="flex-1 p-4 flex flex-col gap-2 text-left">
-                          <span className="text-[9.5px] tracking-[0.34em] uppercase text-orange-500/85">MOVIEBOOK · Movie Ticket</span>
-                          <h3 className="text-[21px] leading-tight font-bold text-[#f7f4ec] line-clamp-2">{ticket.movieTitle}</h3>
-                          <span className="text-[11px] text-white/50 tracking-[0.12em] uppercase">{ticket.screenLabel}</span>
-                          
-                          <div className="mt-auto grid grid-cols-3 gap-2">
-                            <div>
-                              <div className="text-[8.5px] tracking-[0.22em] uppercase text-white/40">Date</div>
-                              <div className="text-[11px] font-semibold text-[#f2eee3]">{ticket.date}</div>
-                            </div>
-                            <div>
-                              <div className="text-[8.5px] tracking-[0.22em] uppercase text-white/40">Screen</div>
-                              <div className="text-[11px] font-semibold text-[#f2eee3]">{ticket.screen}</div>
-                            </div>
-                            <div>
-                              <div className="text-[8.5px] tracking-[0.22em] uppercase text-white/40">Time</div>
-                              <div className="text-[11px] font-semibold text-[#f2eee3]">{ticket.time}</div>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-2">
-                            <div className="text-[8.5px] tracking-[0.22em] uppercase text-white/40">Seats</div>
-                            <div className="text-[11px] font-semibold text-[#f2eee3]">{ticket.seats}</div>
-                          </div>
-                          
-                          <div className="mt-3 self-start text-[9.5px] tracking-[0.24em] uppercase text-green-400 border border-green-400/35 bg-green-400/10 rounded-full px-2.5 py-1">
-                            ● BOOKED
-                          </div>
-                        </div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[4px] text-[#ed1c24]">
+                QuickBook
+              </p>
 
-                        {/* Stub with barcode */}
-                        <div className="w-[92px] flex flex-col items-center justify-center gap-2.5 p-3.5 bg-gradient-to-b from-orange-500/10 to-orange-500/5 border-l-2 border-dashed border-white/20">
-                          <div className="flex gap-0.5 items-end h-[46px]">
-                            {[...Array(22)].map((_, i) => (
-                              <div 
-                                key={i} 
-                                className="bg-white/80 rounded-sm"
-                                style={{ width: i % 3 === 0 ? '3px' : '2px', height: `${Math.min(1, 0.4 + ((i * 37) % 11) / 14) * 100}%` }}
-                              />
-                            ))}
-                          </div>
-                          <div className="w-[46px] h-[46px] rounded-md bg-[#f5f2ea] relative overflow-hidden">
-                            <div className="absolute inset-0" style={{
-                              backgroundImage: 'linear-gradient(90deg, #0b0b10 25%, transparent 25% 50%, #0b0b10 50% 62%, transparent 62%), linear-gradient(0deg, #0b0b10 18%, transparent 18% 44%, #0b0b10 44% 58%, transparent 58%)',
-                              backgroundSize: '12px 12px, 12px 12px'
-                            }} />
-                          </div>
-                          <div className="text-[8.5px] tracking-[0.14em] text-white/55" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                            {ticket.ticketNo}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              <h2 className="text-3xl font-bold text-white sm:text-4xl">
+                Payment Verified
+              </h2>
 
-                  {/* Confirmation stamp */}
-                  {confirmed && (
-                    <div 
-                      className="absolute z-[3] bottom-[22px] right-[10px] px-4 py-2.5 border-2 border-green-400 rounded-lg text-green-400 text-[13px] font-extrabold tracking-[0.18em] uppercase"
-                      style={{
-                        background: 'rgba(8, 20, 14, 0.55)',
-                        boxShadow: '0 0 40px -6px rgba(126, 224, 168, 0.5)',
-                        animation: 'stampIn 0.72s cubic-bezier(0.18, 1.5, 0.4, 1) forwards',
-                      }}
-                    >
-                      ✓ Booking Confirmed
-                    </div>
-                  )}
-                </>
-              )}
+              <p className="mt-3 text-sm text-zinc-500">
+                Securing your movie tickets...
+              </p>
+
+              <div className="mt-7 h-1 w-48 overflow-hidden rounded-full bg-white/[0.06]">
+                <div
+                  className="h-full bg-[#ed1c24]"
+                  style={{
+                    animation:
+                      "qbProgress 1s linear forwards",
+                  }}
+                />
+              </div>
             </div>
           )}
 
-          {/* Footer */}
-          {confirmed && (
-            <div className="grid gap-1.5 justify-items-center" style={{ animation: 'riseUp 0.62s cubic-bezier(0.22, 1, 0.36, 1) both' }}>
-              <h2 className="text-xl font-bold text-[#f5f2ea]">You're All Set! 🎬</h2>
-              <p className="text-[13.5px] text-white/60 tracking-wider">Your movie ticket is confirmed.</p>
-              <span className="text-xs tracking-[0.16em] uppercase text-white/50 mt-1">Taking you to your booking…</span>
-              <div className="mt-1.5 w-[190px] h-0.5 rounded-full bg-white/10 overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-orange-500/20 to-orange-500 origin-left"
-                  style={{ animation: `progressBar ${timings[PHASES.CONFIRMED]}ms linear forwards` }}
-                />
+          {/* TICKET */}
+          {showTicket && (
+            <div
+              className="mx-auto"
+              style={{
+                animation:
+                  "qbTicketIn .8s cubic-bezier(.22,1,.36,1) both",
+              }}
+            >
+              {/* Heading */}
+              <div className="mb-6">
+                <p className="text-[10px] font-bold uppercase tracking-[4px] text-[#ed1c24]">
+                  QuickBook
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold text-white sm:text-3xl">
+                  {isConfirmed
+                    ? "Booking Confirmed"
+                    : "Preparing Your Ticket"}
+                </h2>
+
+                <p className="mt-2 text-sm text-zinc-500">
+                  {isConfirmed
+                    ? "Your movie tickets are ready."
+                    : "Creating your digital movie ticket..."}
+                </p>
               </div>
+
+              {/* Ticket */}
+              <div
+                className="qb-ticket relative mx-auto w-full max-w-[680px] overflow-hidden rounded-2xl border border-white/[0.09] bg-[#101114] text-left shadow-[0_30px_100px_rgba(0,0,0,.65)]"
+              >
+                {/* Shine */}
+                <div
+                  className="pointer-events-none absolute inset-y-0 left-0 z-20 w-[35%] bg-gradient-to-r from-transparent via-white/[0.05] to-transparent"
+                  style={{
+                    animation:
+                      "qbShine 2.2s ease-in-out .5s both",
+                  }}
+                />
+
+                {/* Header */}
+                <div className="border-b border-white/[0.07] bg-[#0b0c0f] px-5 py-4 sm:px-7">
+                  <div className="flex items-center justify-between">
+
+                    <div>
+                      <p className="text-lg font-black tracking-tight text-white">
+                        Quick<span className="text-[#ed1c24]">Book</span>
+                      </p>
+
+                      <p className="mt-0.5 text-[9px] uppercase tracking-[2px] text-zinc-600">
+                        Digital Movie Ticket
+                      </p>
+                    </div>
+
+                    <div className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1.5">
+                      <span className="text-[9px] font-bold uppercase tracking-[1px] text-green-400">
+                        ✓ Confirmed
+                      </span>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Ticket body */}
+                <div className="flex flex-col sm:flex-row">
+
+                  {/* Main section */}
+                  <div className="qb-ticket-main flex-1 p-6 sm:p-8">
+
+                    <p className="text-[9px] font-semibold uppercase tracking-[2px] text-zinc-600">
+                      Movie
+                    </p>
+
+                    <h3 className="qb-movie-title mt-1.5 text-2xl font-bold leading-tight text-white sm:text-3xl">
+                      {details.movieName}
+                    </h3>
+
+                    <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-4">
+
+                      <div>
+                        <p className="text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                          Date
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-zinc-200">
+                          {details.date}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                          Time
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-zinc-200">
+                          {details.time}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                          Screen
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-zinc-200">
+                          {details.screenName}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                          Seats
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-white">
+                          {details.seats.join(", ") || "—"}
+                        </p>
+                      </div>
+
+                    </div>
+
+                    <div className="mt-6 border-t border-white/[0.06] pt-5">
+
+                      <p className="text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                        Theatre
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-zinc-200">
+                        {details.theaterName}
+                      </p>
+
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+
+                      <div>
+                        <p className="text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                          Booking ID
+                        </p>
+
+                        <p className="mt-1 font-mono text-xs font-semibold text-zinc-300">
+                          {details.bookingId}
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                          Amount Paid
+                        </p>
+
+                        <p className="mt-1 text-xl font-bold text-white">
+                          ₹{details.amount}
+                        </p>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* Ticket stub */}
+                  <div
+                    className="qb-ticket-stub relative flex w-full flex-col items-center justify-center border-t border-dashed border-white/10 bg-[#0b0c0f] p-6 sm:w-[175px] sm:border-l sm:border-t-0"
+                  >
+
+                    {/* Notches */}
+                    <div className="absolute -top-3 left-1/2 h-6 w-6 -translate-x-1/2 rounded-full bg-[#05060A] sm:-left-3 sm:top-1/2 sm:-translate-y-1/2" />
+
+                    {details.qrCode ? (
+                      <div className="rounded-xl bg-white p-2.5 shadow-lg">
+                        <img
+                          src={details.qrCode}
+                          alt="Booking QR"
+                          className="h-[125px] w-[125px]"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-[125px] w-[125px] items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-center">
+                        <span className="px-4 text-[9px] uppercase tracking-[1px] text-zinc-600">
+                          QR unavailable
+                        </span>
+                      </div>
+                    )}
+
+                    <p className="mt-4 text-center text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                      Scan at entrance
+                    </p>
+
+                  </div>
+
+                </div>
+
+                {/* Bottom strip */}
+                <div className="flex items-center justify-between border-t border-white/[0.06] bg-[#0b0c0f] px-6 py-3">
+
+                  <span className="text-[8px] uppercase tracking-[1.5px] text-zinc-600">
+                    Keep this ticket ready
+                  </span>
+
+                  <span className="text-[9px] font-semibold text-[#ed1c24]">
+                    QuickBook
+                  </span>
+
+                </div>
+
+                {/* Confirmed stamp */}
+                {isConfirmed && (
+                  <div
+                    className="pointer-events-none absolute left-1/2 top-1/2 z-30"
+                    style={{
+                      animation:
+                        "qbStamp .65s cubic-bezier(.18,1.5,.4,1) both",
+                    }}
+                  >
+                    <div className="rotate-[-4deg] rounded-xl border-2 border-green-400 bg-[#07130d]/95 px-6 py-3 shadow-[0_0_45px_rgba(34,197,94,.2)]">
+                      <p className="text-sm font-black uppercase tracking-[2px] text-green-400">
+                        ✓ Confirmed
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Bottom confirmation */}
+              {isConfirmed && (
+                <div
+                  className="mt-7"
+                  style={{
+                    animation:
+                      "qbRise .6s cubic-bezier(.22,1,.36,1) .2s both",
+                  }}
+                >
+                  <div
+                    className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-400"
+                    style={{
+                      animation:
+                        "qbPop .55s cubic-bezier(.22,1,.36,1) .25s both",
+                    }}
+                  >
+                    <span className="text-2xl">
+                      ✓
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl font-bold text-white">
+                    You're all set!
+                  </h3>
+
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Your booking has been confirmed successfully.
+                  </p>
+
+                  <div className="mx-auto mt-5 h-1 w-52 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div
+                      className="h-full bg-[#ed1c24]"
+                      style={{
+                        animation:
+                          "qbProgress 2.8s linear forwards",
+                      }}
+                    />
+                  </div>
+
+                  <p className="mt-3 text-[9px] uppercase tracking-[2px] text-zinc-700">
+                    Taking you to your booking
+                  </p>
+                </div>
+              )}
+
             </div>
           )}
         </div>
