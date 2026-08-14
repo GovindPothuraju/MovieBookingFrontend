@@ -6,12 +6,44 @@ import BookingConfirmationAnimation from "./BookingConfirmationAnimation";
 
 const Payments = () => {
   const { state } = useLocation();
-  const [loading, setLoading] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(state?.expiresIn || 0);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmedBooking, setConfirmedBooking] = useState(null);
-  const [error, setError] = useState(null);
 
+  const [loading, setLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(
+    state?.expiresIn || 0
+  );
+  const [showConfirmation, setShowConfirmation] =
+    useState(false);
+  const [confirmedBooking, setConfirmedBooking] =
+    useState(null);
+  const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+
+  // Fetch logged-in user
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await axios.get(
+          `${BASE_URL}/user/profile`,
+          {
+            withCredentials: true,
+          }
+        );
+
+        if (response.data?.success) {
+          setUser(response.data.data);
+        }
+      } catch (err) {
+        console.error(
+          "Error fetching user profile:",
+          err
+        );
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  // Invalid payment state
   if (!state) {
     return (
       <div className="flex h-screen items-center justify-center text-white">
@@ -20,8 +52,13 @@ const Payments = () => {
     );
   }
 
-  const { showId, selectedSeats, totalAmount } = state;
+  const {
+    showId,
+    selectedSeats = [],
+    totalAmount,
+  } = state;
 
+  // Seat lock countdown
   useEffect(() => {
     if (timeLeft <= 0) return;
 
@@ -31,6 +68,7 @@ const Payments = () => {
           clearInterval(timer);
           return 0;
         }
+
         return prev - 1;
       });
     }, 1000);
@@ -38,30 +76,39 @@ const Payments = () => {
     return () => clearInterval(timer);
   }, [timeLeft]);
 
+  // Wait for webhook to create booking
   const waitForBooking = async () => {
     for (let i = 0; i < 10; i++) {
       try {
-        const response = await axios.get(`${BASE_URL}/user/bookings/me`, {
-          withCredentials: true,
-        });
+        const response = await axios.get(
+          `${BASE_URL}/user/bookings/me`,
+          {
+            withCredentials: true,
+          }
+        );
 
-        const bookings = response.data.data;
+        const bookings =
+          response.data?.data || [];
 
-        if (bookings && bookings.length > 0) {
-          // Return the most recent booking
+        if (bookings.length > 0) {
           return bookings[0];
         }
       } catch (err) {
-        console.error("Error fetching booking:", err);
+        console.error(
+          "Error fetching booking:",
+          err
+        );
       }
 
-      // Wait 1 second before checking again
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) =>
+        setTimeout(resolve, 1000)
+      );
     }
 
     return null;
   };
 
+  // Confirmation animation complete
   const handleConfirmationComplete = () => {
     if (confirmedBooking?._id) {
       window.location.href = `/bookings/${confirmedBooking._id}`;
@@ -70,10 +117,19 @@ const Payments = () => {
     }
   };
 
+  // Start payment
   const handlePayment = async () => {
-    // Check if Razorpay is loaded
     if (!window.Razorpay) {
-      setError("Payment system is not ready. Please refresh the page.");
+      setError(
+        "Payment system is not ready. Please refresh the page."
+      );
+      return;
+    }
+
+    if (!user) {
+      setError(
+        "Unable to load your profile. Please try again."
+      );
       return;
     }
 
@@ -81,7 +137,7 @@ const Payments = () => {
       setLoading(true);
       setError(null);
 
-      // Create Razorpay Order
+      // Create Razorpay order
       const response = await axios.post(
         `${BASE_URL}/user/payments/create-order`,
         { showId },
@@ -90,7 +146,12 @@ const Payments = () => {
         }
       );
 
-      const { orderId, amount, currency, key } = response.data.data;
+      const {
+        orderId,
+        amount,
+        currency,
+        key,
+      } = response.data.data;
 
       const options = {
         key,
@@ -103,26 +164,42 @@ const Payments = () => {
         handler: async function () {
           try {
             // Wait until webhook creates booking
-            const booking = await waitForBooking();
+            const booking =
+              await waitForBooking();
 
             if (!booking) {
-              console.error("Booking not found after payment");
-              // Optionally show an error toast/message
-              setError("Payment successful, but booking is still processing. Redirecting...");
+              console.error(
+                "Booking not found after payment"
+              );
+
+              setError(
+                "Payment successful, but booking is still processing. Redirecting..."
+              );
+
               setTimeout(() => {
-                window.location.href = "/bookings";
+                window.location.href =
+                  "/bookings";
               }, 3000);
+
               return;
             }
 
-            // Show the cinematic confirmation animation
+            // Show confirmation animation
             setConfirmedBooking(booking);
             setShowConfirmation(true);
           } catch (err) {
-            console.error("Error in payment handler:", err);
-            setError("Something went wrong. Redirecting to bookings...");
+            console.error(
+              "Error in payment handler:",
+              err
+            );
+
+            setError(
+              "Something went wrong. Redirecting to bookings..."
+            );
+
             setTimeout(() => {
-              window.location.href = "/bookings";
+              window.location.href =
+                "/bookings";
             }, 3000);
           }
         },
@@ -130,12 +207,23 @@ const Payments = () => {
         modal: {
           ondismiss: async function () {
             try {
-              await axios.delete(`${BASE_URL}/user/bookings/lock`, {
-                data: { showId },
-                withCredentials: true,
-              });
+              await axios.delete(
+                `${BASE_URL}/user/bookings/lock`,
+                {
+                  data: {
+                    showId,
+                    seats: selectedSeats.map(
+                      (seat) => seat.seatLabel
+                    ),
+                  },
+                  withCredentials: true,
+                }
+              );
             } catch (err) {
-              console.error("Error releasing seat lock:", err);
+              console.error(
+                "Error releasing seat lock:",
+                err
+              );
             }
           },
         },
@@ -144,33 +232,62 @@ const Payments = () => {
           color: "#F97316",
         },
 
+        // Logged-in user's details
         prefill: {
-          name: "",
-          email: "",
+          name: user.name || "",
+          email: user.email || "",
+          contact: user.phone || "",
         },
       };
 
-      const razorpay = new window.Razorpay(options);
+      const razorpay =
+        new window.Razorpay(options);
 
-      razorpay.on("payment.failed", async function (response) {
-        console.error("Payment failed:", response.error);
-        setError("Payment failed. Please try again.");
+      // Payment failed
+      razorpay.on(
+        "payment.failed",
+        async function (response) {
+          console.error(
+            "Payment failed:",
+            response.error
+          );
 
-        try {
-          await axios.delete(`${BASE_URL}/user/bookings/lock`, {
-            data: { showId },
-            withCredentials: true,
-          });
-        } catch (err) {
-          console.error("Error releasing seat lock:", err);
+          setError(
+            "Payment failed. Please try again."
+          );
+
+          try {
+            await axios.delete(
+              `${BASE_URL}/user/bookings/lock`,
+              {
+                data: {
+                  showId,
+                  seats: selectedSeats.map(
+                    (seat) => seat.seatLabel
+                  ),
+                },
+                withCredentials: true,
+              }
+            );
+          } catch (err) {
+            console.error(
+              "Error releasing seat lock:",
+              err
+            );
+          }
         }
-      });
+      );
 
       razorpay.open();
     } catch (err) {
-      console.error("Payment initiation error:", err);
+      console.error(
+        "Payment initiation error:",
+        err
+      );
+
       setError(
-        err.response?.data?.message || "Unable to initiate payment. Please try again."
+        err.response?.data?.message ||
+          "Unable to initiate payment. Please try again."
       );
     } finally {
       setLoading(false);
@@ -179,48 +296,77 @@ const Payments = () => {
 
   return (
     <>
-      {/* Booking Confirmation Animation Overlay */}
-      {showConfirmation && confirmedBooking && (
-        <BookingConfirmationAnimation
-          booking={confirmedBooking}
-          onComplete={handleConfirmationComplete}
-        />
-      )}
+      {/* Booking Confirmation Animation */}
+      {showConfirmation &&
+        confirmedBooking && (
+          <BookingConfirmationAnimation
+            booking={confirmedBooking}
+            onComplete={
+              handleConfirmationComplete
+            }
+          />
+        )}
 
       <div className="mx-auto max-w-3xl px-6 py-12">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-          <h1 className="text-3xl font-bold text-white">Payment</h1>
+          <h1 className="text-3xl font-bold text-white">
+            Payment
+          </h1>
 
-          {/* Error Message */}
+          {/* Error */}
           {error && (
-            <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-              <p className="text-red-400 text-sm">{error}</p>
+            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+              <p className="text-sm text-red-400">
+                {error}
+              </p>
             </div>
           )}
 
           <div className="mt-8 space-y-5">
             <div>
-              <p className="text-zinc-400">Show ID</p>
-              <p className="break-all text-white">{showId}</p>
-            </div>
+              <p className="text-zinc-400">
+                Show ID
+              </p>
 
-            <div>
-              <p className="text-zinc-400">Selected Seats</p>
-              <p className="text-white">
-                {selectedSeats.map((seat) => seat.seatLabel).join(", ")}
+              <p className="break-all text-white">
+                {showId}
               </p>
             </div>
 
             <div>
-              <p className="text-zinc-400">Total Amount</p>
-              <p className="text-3xl font-bold text-red-500">₹{totalAmount}</p>
+              <p className="text-zinc-400">
+                Selected Seats
+              </p>
+
+              <p className="text-white">
+                {selectedSeats
+                  .map(
+                    (seat) => seat.seatLabel
+                  )
+                  .join(", ")}
+              </p>
             </div>
 
             <div>
-              <p className="text-zinc-400">Seat Lock Expires In</p>
+              <p className="text-zinc-400">
+                Total Amount
+              </p>
+
+              <p className="text-3xl font-bold text-red-500">
+                ₹{totalAmount}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-zinc-400">
+                Seat Lock Expires In
+              </p>
+
               <p
                 className={`font-semibold ${
-                  timeLeft <= 30 ? "text-red-500" : "text-yellow-400"
+                  timeLeft <= 30
+                    ? "text-red-500"
+                    : "text-yellow-400"
                 }`}
               >
                 {timeLeft} seconds
@@ -229,8 +375,13 @@ const Payments = () => {
           </div>
 
           <button
+            type="button"
             onClick={handlePayment}
-            disabled={timeLeft <= 0 || loading}
+            disabled={
+              timeLeft <= 0 ||
+              loading ||
+              !user
+            }
             className="mt-10 w-full rounded-xl bg-red-500 py-4 font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-600"
           >
             {loading

@@ -27,7 +27,7 @@ function App() {
             <Route element={<Body />}>
               <Route path="/home" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/movies" element={<Movies />} />
+              <Route path="/movies" element={<Movies standalone={true}/>} />
               <Route path="/movies/:slug" element={<MovieDetails />} />
               <Route path="/movies/:slug/shows" element={<Shows />} />
               <Route path="/shows/:showId/seats" element={<Seats />} />
